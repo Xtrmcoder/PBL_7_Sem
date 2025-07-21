@@ -1,0 +1,14 @@
+# Ignore the large dataset, it's not needed for predictions
+api/final_combined_sarcasm.csv
+
+# Ignore the Python training script
+api/train_model.py
+
+# Ignore Python's virtual environment folders if they exist
+.venv/
+venv/
+env/
+
+# Ignore pycache files
+__pycache__/
+*.pyc
