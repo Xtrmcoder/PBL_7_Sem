@@ -1,28 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Mic, Send, Server, BarChart2, Loader, Alert, AlertIcon } from 'lucide-react';
+import { Mic, Send, Server, BarChart2, Activity, AlertTriangle } from 'lucide-react';
 
-// --- Import Chakra UI Components ---
-import {
-  ChakraProvider,
-  Box,
-  Container,
-  Heading,
-  Text,
-  VStack,
-  Grid,
-  GridItem,
-  Textarea,
-  Button,
-  Spinner,
-  useToast,
-  Tag,
-  Flex,
-  IconButton,
-  Icon,
-  extendTheme
-} from '@chakra-ui/react';
+// Import React-Bootstrap components
+import 'bootstrap/dist/css/bootstrap.min.css';
+import Container from 'react-bootstrap/Container';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
+import Card from 'react-bootstrap/Card';
+import Form from 'react-bootstrap/Form';
+import Button from 'react-bootstrap/Button';
+import Spinner from 'react-bootstrap/Spinner';
+import Alert from 'react-bootstrap/Alert';
+import Badge from 'react-bootstrap/Badge';
 
 // --- Smart API URL ---
 const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://127.0.0.1:5000';
@@ -32,33 +23,15 @@ const chartData = [
   { name: 'Sarcastic', value: 507520 },
   { name: 'Not Sarcastic', value: 479653 },
 ];
-const COLORS = ['#6B46C1', '#48BB78']; // Purple and Green theme
-
-// Custom theme to match our colors
-const theme = extendTheme({
-  fonts: {
-    heading: `'Inter', sans-serif`,
-    body: `'Inter', sans-serif`,
-  },
-});
+const COLORS = ['#6f42c1', '#198754']; // Bootstrap Purple and Green
 
 const App = () => {
-  return (
-    // Wrap the entire app in the ChakraProvider
-    <ChakraProvider theme={theme}>
-      <SarcasmDetector />
-    </ChakraProvider>
-  );
-};
-
-const SarcasmDetector = () => {
-  // --- State Management ---
   const [text, setText] = useState('');
   const [result, setResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [apiStatus, setApiStatus] = useState('checking');
-  const toast = useToast();
 
   const recognitionRef = useRef(null);
 
@@ -77,27 +50,28 @@ const SarcasmDetector = () => {
       recognition.onstart = () => setIsRecording(true);
       recognition.onend = () => setIsRecording(false);
       recognition.onresult = (event) => setText(event.results[0][0].transcript);
-      recognition.onerror = (event) => toast({ title: "Voice Error", description: event.error, status: "error", duration: 5000, isClosable: true });
+      recognition.onerror = (event) => setError(`Voice recognition error: ${event.error}`);
       
       recognitionRef.current = recognition;
-
       return () => recognition.stop();
     }
-  }, [toast]);
+  }, []);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!text.trim()) {
-      toast({ title: "Input required", description: "Please enter text to analyze.", status: "warning", duration: 3000, isClosable: true });
+      setError("Please enter text to analyze.");
       return;
     }
     setIsLoading(true);
     setResult(null);
+    setError('');
 
     try {
       const response = await axios.post(`${API_BASE_URL}/predict`, { text });
       setResult(response.data);
     } catch (err) {
-      toast({ title: "Connection Error", description: "Failed to connect to the model.", status: "error", duration: 5000, isClosable: true });
+      setError("Failed to connect to the model. Please ensure the API is running and refresh.");
     } finally {
       setIsLoading(false);
     }
@@ -106,102 +80,90 @@ const SarcasmDetector = () => {
   const handleVoiceRecording = () => {
     const recognition = recognitionRef.current;
     if (!recognition) {
-        toast({ title: "Unsupported", description: "Speech recognition is not supported in this browser.", status: "error", duration: 5000, isClosable: true });
-        return;
+      setError("Speech recognition is not supported in this browser.");
+      return;
     }
     isRecording ? recognition.stop() : recognition.start();
   };
 
   return (
-    <Box bg="gray.50" minH="100vh" py={10}>
-      <Container maxW="container.xl">
-        <VStack spacing={4} textAlign="center" mb={10}>
-          <Heading as="h1" size="2xl" color="gray.700">
-            Sarcasm Detector
-          </Heading>
-          <Text fontSize="lg" color="gray.500">
-            Analyze text with a machine learning model, now with a more beautiful UI.
-          </Text>
-        </VStack>
+    <div className="bg-light min-vh-100 py-5">
+      <Container>
+        <div className="text-center mb-5">
+          <h1 className="display-4 fw-bold">Sarcasm Detector</h1>
+          <p className="lead text-muted">A new look with React-Bootstrap</p>
+        </div>
 
-        <Grid templateColumns={{ base: "1fr", lg: "repeat(2, 1fr)" }} gap={8}>
-          <GridItem>
-            <Box bg="white" p={6} borderRadius="xl" boxShadow="md">
-              <Heading as="h2" size="lg" mb={4}>Enter Text</Heading>
-              <VStack spacing={4}>
-                <Textarea
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder="Type or paste your text here..."
-                  size="lg"
-                  h="150px"
-                  focusBorderColor="purple.500"
-                />
-                <Flex w="100%" justify="space-between">
-                  <IconButton
-                    aria-label="Record voice"
-                    icon={<Icon as={Mic} />}
-                    isRound
-                    size="lg"
-                    colorScheme={isRecording ? "red" : "gray"}
-                    onClick={handleVoiceRecording}
-                    isLoading={isRecording}
-                  />
-                  <Button
-                    rightIcon={<Icon as={Send} />}
-                    colorScheme="purple"
-                    size="lg"
-                    onClick={handleSubmit}
-                    isLoading={isLoading}
-                  >
-                    Analyze
-                  </Button>
-                </Flex>
-              </VStack>
-              {result && (
-                <Box
-                  mt={6} p={4} borderRadius="lg"
-                  bg={result.prediction === 'Sarcastic' ? 'purple.100' : 'green.100'}
-                >
-                  <Heading size="md" color={result.prediction === 'Sarcastic' ? 'purple.800' : 'green.800'}>
-                    Result: {result.prediction}
-                  </Heading>
-                  <Text color={result.prediction === 'Sarcastic' ? 'purple.600' : 'green.600'}>
-                    Confidence: {Math.round(parseFloat(result.confidence) * 100)}%
-                  </Text>
-                </Box>
-              )}
-            </Box>
-          </GridItem>
-          <GridItem>
-            <Box bg="white" p={6} borderRadius="xl" boxShadow="md" h="100%">
-              <Heading as="h2" size="lg" mb={4} display="flex" alignItems="center">
-                <Icon as={BarChart2} mr={2} color="purple.500" />
-                Dataset Overview
-              </Heading>
-              <Box w="100%" h="300px">
-                <ResponsiveContainer>
+        <Row className="g-4">
+          <Col lg={6}>
+            <Card className="h-100 shadow-sm">
+              <Card.Body className="p-4">
+                <Card.Title as="h2" className="mb-4">Enter Text</Card.Title>
+                <Form onSubmit={handleSubmit}>
+                  <Form.Group>
+                    <Form.Control
+                      as="textarea"
+                      rows={5}
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      placeholder="Type or paste text here..."
+                      className="mb-3"
+                    />
+                  </Form.Group>
+                  <div className="d-flex justify-content-between">
+                    <Button variant={isRecording ? "danger" : "secondary"} onClick={handleVoiceRecording} className="rounded-circle p-2 lh-1">
+                      {isRecording ? <Spinner as="span" animation="grow" size="sm" /> : <Mic size={20} />}
+                    </Button>
+                    <Button variant="primary" type="submit" disabled={isLoading}>
+                      {isLoading ? <Spinner as="span" animation="border" size="sm" className="me-2" /> : <Send size={20} className="me-2" />}
+                      Analyze
+                    </Button>
+                  </div>
+                </Form>
+                {error && <Alert variant="danger" className="mt-4 d-flex align-items-center"><AlertTriangle size={20} className="me-2"/>{error}</Alert>}
+                {result && (
+                  <Alert variant={result.prediction === 'Sarcastic' ? 'warning' : 'success'} className="mt-4">
+                    <Alert.Heading>Result: {result.prediction}</Alert.Heading>
+                    <p>Confidence: {Math.round(parseFloat(result.confidence) * 100)}%</p>
+                  </Alert>
+                )}
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col lg={6}>
+            <Card className="h-100 shadow-sm">
+              <Card.Body className="p-4">
+                <Card.Title as="h2" className="mb-4 d-flex align-items-center">
+                  <BarChart2 size={24} className="text-primary me-2" />
+                  Dataset Overview
+                </Card.Title>
+                <div style={{ width: '100%', height: 300 }}>
+                  <ResponsiveContainer>
                     <PieChart>
-                        <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                            {chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
+                      <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
                     </PieChart>
-                </ResponsiveContainer>
-             </Box>
-            </Box>
-          </GridItem>
-        </Grid>
-        
-        <Tag position="absolute" top={4} right={4} colorScheme={apiStatus === 'online' ? 'green' : 'red'}>
-          <Icon as={apiStatus === 'checking' ? Loader : Server} mr={2} />
-          API: {apiStatus}
-        </Tag>
+                  </ResponsiveContainer>
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+        <div className="position-absolute top-0 end-0 p-3">
+          <Badge bg={apiStatus === 'online' ? 'success' : 'danger'}>
+            <div className="d-flex align-items-center">
+              {apiStatus === 'checking' ? <Activity size={16} className="me-1"/> : <Server size={16} className="me-1" />}
+              API: {apiasiStatus}
+            </div>
+          </Badge>
+        </div>
       </Container>
-    </Box>
+    </div>
   );
 };
 
